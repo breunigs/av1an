@@ -41,6 +41,16 @@ RUN cargo build --release && \
     mv ./target/release/av1an /usr/local/bin && \
     cd .. && rm -rf ./Av1an
 
+# Create user
+RUN useradd -ms /bin/bash build_user
+RUN echo "%build_user ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/build_user
+USER build_user
+
+RUN \
+  git clone https://aur.archlinux.org/vapoursynth-plugin-bestsource-git.git /tmp/bestsource \
+  && cd /tmp/bestsource \
+  && makepkg --syncdeps --noconfirm \
+  && mv /tmp/bestsource/vapoursynth-plugin-bestsource-git-r*.pkg.tar.zst /bestsource.tar.zst
 
 FROM base AS runtime
 
@@ -48,6 +58,8 @@ ENV MPLCONFIGDIR="/home/app_user/"
 
 COPY --from=build /usr/local/bin/rav1e /usr/local/bin/rav1e
 COPY --from=build /usr/local/bin/av1an /usr/local/bin/av1an
+COPY --from=build /tmp/bestsource.tar.zst /
+RUN tar --zstd -xf /bestsource.tar.zst -C / && rm /tmp/bestsource.tar.zst
 
 # Create user
 RUN useradd -ms /bin/bash app_user
